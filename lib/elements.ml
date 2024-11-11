@@ -111,3 +111,38 @@ module Script = El.Make (struct
   type attr = [ `Src of string ] (* mutually exclusive with child elements *)
   type attrs = { src : attr option }
 end)
+
+module DataModel = El.Make (struct
+  type t = DataModel
+  type attr = None
+  type child = [ `Data ]
+
+  let children : child list = []
+end)
+
+module Data = El.Make (struct
+  type t = Data
+  type attr = [ `Id | `Src | `Expr ]
+
+  type attrs = { id : attr; src : attr option; expr : attr option }
+  (**
+  In a conformant SCXML document, 
+  a <data> element MAY have either a 'src' or an 'expr' attribute, 
+  but MUST NOT have both. Furthermore, if either attribute is present, 
+  the element MUST NOT have any children. 
+  Thus 'src', 'expr' and children are mutually exclusive 
+  in the <data> element.
+  *)
+end)
+
+module Log = El.Make (struct
+  type t = Log
+  type attr = [ `Label of string | `Expr ]
+  type attrs = { label : attr option; expr : attr option }
+end)
+
+module Raise = El.Make (struct
+  type t = Raise
+  type attr = Event
+  type attrs = { event : attr }
+end)

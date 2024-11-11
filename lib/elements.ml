@@ -78,13 +78,24 @@ module Final = El.Make (struct
 end)
 
 module OnEntry = El.Make (struct
+  open Executable_content
+
   type t = OnEntry
-  type attr = []
+  type attr = ExecutableElements
 end)
 
 module OnExit = El.Make (struct
+  open Executable_content
+
   type t = OnExit
-  type attr = []
+  type attr = ExecutableElements.t
+end)
+
+module Finalize = El.Make (struct
+  open Executable_content
+
+  type t = Finalize
+  type attr = ExecutableElements.t
 end)
 
 module History = El.Make (struct
@@ -92,4 +103,11 @@ module History = El.Make (struct
   type child = [ `Transition ]
   type attr = [ `Id of string | `Type of string ]
   type attrs = { id : attr option; _type : attr option }
+end)
+
+module Script = El.Make (struct
+  type t = Script
+  type child = string option
+  type attr = [ `Src of string ] (* mutually exclusive with child elements *)
+  type attrs = { src : attr option }
 end)

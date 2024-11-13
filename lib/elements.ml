@@ -1,30 +1,4 @@
-module type TAG = sig
-  type t
-  type attr
-end
-
-module El = struct
-  module type T = sig
-    type el_type
-    type child
-
-    val children : child list
-  end
-
-  module Make (Tag : TAG) : T = struct
-    type el_type = Tag.t
-    type child
-
-    let children = []
-    (* This will contain the various functions
-       for operating on statechart elements
-    *)
-  end
-end
-
-module State = El.Make (struct
-  type t = State
-
+module State = struct
   type child =
     [ `OnEntry
     | `OnExit
@@ -37,112 +11,108 @@ module State = El.Make (struct
     | `DataModel
     | `Invoke ]
 
-  type attr = [ `Id of string | `Initial of string ]
-  type attrs = { id : attr; initial : attr }
-end)
-
-module Parallel = El.Make (struct
-  type t = Parallel
-
-  type child =
-    [ `OnEntry | `OnExit | `State | `Parallel | `History | `DataModel | `Invoke ]
-
-  type attr = [ `Id of string ]
-  type attrs = { id : attr }
-end)
-
-module Transition = El.Make (struct
-  type t = Transition
-  type attr = [ `Event | `Cond of bool | `Target of string | `Type of string ]
-
-  type attrs = {
-    event : attr option;
-    cond : attr option;
-    target : attr option;
-    _type : attr option;
+  type t = {
+    id : string option;
+    initial : string option;
+    children : child list;
   }
-end)
 
-module Initial = El.Make (struct
-  type t = Initial
+  let is_atomic (t : t) =
+    List.find_opt
+      (fun child -> child == `Parallel || child == `State || child == `Final)
+      t.children
+    |> Option.is_some |> Bool.not
+
+  let is_compound (t : t) =
+    List.find_opt
+      (fun child -> child == `Parallel || child == `State || child == `Final)
+      t.children
+    |> Option.is_some
+
+  let validate t =
+    let count = ref 0 in
+    List.iter
+      (fun child -> if child == `DataModel then incr count else ())
+      t.children;
+    !count > 1
+end
+
+module Parallel = struct
+  type child =
+  [ `OnEntry | `OnExit | `State | `Parallel | `History | `DataModel | `Invoke ]
+
+  type t = { id : string; children : child list }
+
+  let validate t =
+    let count = ref 0 in
+    List.iter
+      (fun child -> if child == `DataModel then incr count else ())
+      t.children;
+    !count > 1
+end
+
+module Transition = struct
+  type t = {
+    event : string option;
+    cond : bool option;
+    target : string option;
+    _type : string option;
+  }
+end
+
+module Initial = struct
+  type t = { id : string option }
   type child = [ `Transition ]
-  type attr = [ `Id of string ]
-  type attrs = { id : attr option }
-end)
+end
 
-module Final = El.Make (struct
-  type t = Final
+module Final = struct
+  type t = { id : string option }
   type child = [ `OnEntry | `OnExit | `DoneData ]
-  type attr = [ `Id of string ]
-  type attrs = { id : attr option }
-end)
+end
 
-module OnEntry = El.Make (struct
+module OnEntry = struct
   open Executable_content
 
   type t = OnEntry
   type attr = ExecutableElements
-end)
+end
 
-module OnExit = El.Make (struct
+module OnExit = struct
   open Executable_content
 
   type t = OnExit
   type attr = ExecutableElements.t
-end)
+end
 
-module Finalize = El.Make (struct
+module Finalize = struct
   open Executable_content
 
   type t = Finalize
   type attr = ExecutableElements.t
-end)
+end
 
-module History = El.Make (struct
-  type t = History
+module History = struct
+  type t = { id : string option; _type : string option }
   type child = [ `Transition ]
-  type attr = [ `Id of string | `Type of string ]
-  type attrs = { id : attr option; _type : attr option }
-end)
+end
 
-module Script = El.Make (struct
-  type t = Script
+module Script = struct
+  type t = { src : string option }
   type child = string option
-  type attr = [ `Src of string ] (* mutually exclusive with child elements *)
-  type attrs = { src : attr option }
-end)
+end
 
-module DataModel = El.Make (struct
-  type t = DataModel
-  type attr = None
+module DataModel = struct
   type child = [ `Data ]
+end
 
-  let children : child list = []
-end)
+module Data = struct
+  type t = { id : string; src : string option; expr : string option }
+end
 
-module Data = El.Make (struct
-  type t = Data
-  type attr = [ `Id | `Src | `Expr ]
+module Log = struct
+  type t = { label : string option; expr : string option }
+end
 
-  type attrs = { id : attr; src : attr option; expr : attr option }
-  (**
-  In a conformant SCXML document, 
-  a <data> element MAY have either a 'src' or an 'expr' attribute, 
-  but MUST NOT have both. Furthermore, if either attribute is present, 
-  the element MUST NOT have any children. 
-  Thus 'src', 'expr' and children are mutually exclusive 
-  in the <data> element.
-  *)
-end)
-
-module Log = El.Make (struct
-  type t = Log
-  type attr = [ `Label of string | `Expr ]
-  type attrs = { label : attr option; expr : attr option }
-end)
-
-module Raise = El.Make (struct
-  type t = Raise
-  type attr = Event
-  type attrs = { event : attr }
-end)
+module Raise = struct
+  type t = { event : string }
+end

@@ -1,2 +1,3 @@
 (test
- (name test_scxml))
+ (name test_scxml)
+ (libraries scxml))
